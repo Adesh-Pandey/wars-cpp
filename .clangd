@@ -1,0 +1,4 @@
+CompileFlags:
+  Add: [
+    "-I/opt/homebrew/Cellar/sfml/2.6.1/include",
+  ]
