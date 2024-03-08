@@ -9,23 +9,18 @@ using namespace std;
 
 const float PLAYER_WIDTH = 50.f;
 const float PLAYER_HEIGHT = 50.f;
-const float PlayerStep = 0.1f;
+const float PlayerStep = 0.05;
 
 const int ScreenWidth = 800;
 const int ScreenHeight = 600;
 
-const float BULLET_SIZE = 3.f;
+const float BULLET_SIZE = 5.f;
 
 const float BULLET_STEP = 0.05;
 
-class Coord {
-public:
+struct Coord {
   float x = 0.f;
   float y = 0.f;
-  Coord(float a, float b) {
-    x = a;
-    y = b;
-  }
 };
 
 enum PlayerMovementDirection { UP = 1, DOWN, LEFT, RIGHT };
@@ -86,11 +81,11 @@ public:
 
     const float oldY = oldPos.y;
 
-    if (oldX + dx > ScreenWidth - 20 - PLAYER_WIDTH || oldX + dx <= 20) {
+    if (oldX + dx > ScreenWidth - 20 || oldX + dx <= 20) {
       return;
     }
 
-    if (oldY + dy > ScreenHeight - 20 - PLAYER_HEIGHT || oldY + dy <= 20) {
+    if (oldY + dy > ScreenHeight - 20 || oldY + dy <= 20) {
       return;
     }
     playerSprite.setPosition(oldX + dx, oldY + dy);
@@ -133,7 +128,7 @@ public:
   Vector2f getCoord() {
     Vector2f pos = playerSprite.getPosition();
 
-    return Vector2f(pos.x + PLAYER_WIDTH / 2, pos.y + PLAYER_HEIGHT / 2);
+    return Vector2f{pos.x + PLAYER_WIDTH / 2, pos.y + PLAYER_HEIGHT / 2};
   }
 
   Sprite getSprite() { return playerSprite; }
@@ -162,9 +157,7 @@ void whichKeyPressedCheck(Player *player, Keyboard::Key keyCode) {
   }
 }
 Coord getPlayerCenterFromCoord(Vector2f coord) {
-  cout << " Player coord (" << coord.x << " , " << coord.y << " )" << endl;
-  return Coord(coord.x + PLAYER_WIDTH / 2.0f + 200.f,
-               coord.y + PLAYER_HEIGHT / 2.0f);
+  return Coord{coord.x + PLAYER_WIDTH / 2 + 200, coord.y + PLAYER_HEIGHT / 2};
 }
 
 class Bullet {
@@ -214,8 +207,13 @@ int main() {
 
   vector<Bullet> bulletBuffer;
 
+  int bulletCount = 0;
+
   while (window.isOpen()) {
 
+    cout << bulletCount << endl;
+
+    // Process events
     Event event;
 
     while (window.pollEvent(event)) {
@@ -239,15 +237,15 @@ int main() {
 
     window.clear();
 
-    for (Bullet &b : bulletBuffer) {
-      b.incrementPosition();
-
+    for (Bullet b : bulletBuffer) {
       b.render(window);
+      b.incrementPosition();
     }
 
     player.render(window);
     window.display();
   }
+
   return EXIT_SUCCESS;
   return 0;
 }
