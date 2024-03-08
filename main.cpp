@@ -1,21 +1,27 @@
 #include "SFML/System/Vector2.hpp"
 #include <SFML/Graphics.hpp>
+#include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+
 using namespace sf;
 
 using namespace std;
 
 const float PLAYER_WIDTH = 50.f;
 const float PLAYER_HEIGHT = 50.f;
+
+const float ENEMY_WIDTH = 50.f;
+const float ENEMY_HEIGHT = 50.f;
+
 const float PlayerStep = 0.1f;
 
 const int ScreenWidth = 800;
 const int ScreenHeight = 600;
 
 const float BULLET_SIZE = 3.f;
-
+const float ENEMY_STEP = 0.02f;
 const float BULLET_STEP = 0.05;
 
 class Coord {
@@ -207,6 +213,50 @@ public:
   }
 };
 
+class Enemy {
+
+private:
+  Texture texture;
+  Sprite enemySprite;
+
+public:
+  Enemy(Coord coord) {
+
+    // Load a playerSprite to display
+    if (!texture.loadFromFile("player_spaceship.png")) {
+      throw std::runtime_error("The texture is not loaded");
+      return;
+    }
+
+    enemySprite.setTexture(texture);
+
+    Vector2u textureSize = texture.getSize();
+
+    // Calculate the scale factors
+    float scaleX = ENEMY_WIDTH / textureSize.x;
+    float scaleY = ENEMY_HEIGHT / textureSize.y;
+
+    // Set the scale of the playerSprite
+    enemySprite.setPosition(coord.x, coord.y);
+    enemySprite.setScale(scaleX, scaleY);
+  }
+
+  void incrementPosition() {
+    const Vector2f oldPos = enemySprite.getPosition();
+
+    enemySprite.setPosition(oldPos.x, oldPos.y + ENEMY_STEP);
+  }
+  void render(RenderWindow &window) {
+    // Draw the player's sprite to the screen
+    window.draw(enemySprite);
+  }
+};
+
+Coord randomCoordinateAboveScreenForEnemySpwan() {
+
+  return Coord(rand() % (800 - (int)ENEMY_HEIGHT), -1 * rand() % 1000);
+}
+
 int main() {
 
   RenderWindow window(VideoMode(ScreenWidth, ScreenHeight), "Game Window");
@@ -214,12 +264,16 @@ int main() {
 
   vector<Bullet> bulletBuffer;
 
+  int levelEmemyCount = 10;
+
+  vector<Enemy> activeEnemyList;
+
   while (window.isOpen()) {
 
     Event event;
 
     while (window.pollEvent(event)) {
-      // Close window: exit
+
       if (event.type == sf::Event::Closed) {
         window.close();
       } else if (event.type == Event::KeyPressed &&
@@ -237,7 +291,27 @@ int main() {
       whichKeyPressedCheck(&player, event.key.code);
     }
 
+    const int diff = levelEmemyCount - activeEnemyList.size();
+
+    if (diff > 0) {
+      for (int i = 0; i < diff; i++) {
+        activeEnemyList.push_back(
+            Enemy(randomCoordinateAboveScreenForEnemySpwan()));
+      }
+    }
+
+    // collision detection
+
+    // clean up bullets after they move outside screen
+    // remove enemies after they go below screen
+
     window.clear();
+
+    for (Enemy &e : activeEnemyList) {
+      e.incrementPosition();
+
+      e.render(window);
+    }
 
     for (Bullet &b : bulletBuffer) {
       b.incrementPosition();
