@@ -206,6 +206,11 @@ public:
     // Draw the player's sprite to the screen
     window.draw(bulletSprite);
   }
+  Vector2f getCoord() {
+    Vector2f pos = bulletSprite.getPosition();
+
+    return Vector2f(pos.x + BULLET_SIZE / 2, pos.y + BULLET_SIZE / 2);
+  }
 };
 
 class Enemy {
@@ -241,11 +246,32 @@ public:
     // Draw the player's sprite to the screen
     window.draw(enemySprite);
   }
+
+  Vector2f getCoord() {
+    Vector2f pos = enemySprite.getPosition();
+
+    return Vector2f(pos.x + ENEMY_WIDTH / 2, pos.y + ENEMY_HEIGHT / 2);
+  }
 };
 
 Coord randomCoordinateAboveScreenForEnemySpwan() {
 
   return Coord(rand() % (800 - (int)ENEMY_HEIGHT), -1 * rand() % 1000);
+}
+
+bool shouldRemoveBullet(Bullet bb) {
+  const Vector2f coord = bb.getCoord();
+  if (coord.y < -20) {
+    return true;
+  }
+  return false;
+}
+bool shouldRemoveEnemy(Enemy ee) {
+  const Vector2f coord = ee.getCoord();
+  if (coord.y > 620) {
+    return true;
+  }
+  return false;
 }
 
 int main() {
@@ -291,10 +317,15 @@ int main() {
       }
     }
 
-    // collision detection
+    bulletBuffer.erase(
+        remove_if(bulletBuffer.begin(), bulletBuffer.end(), shouldRemoveBullet),
+        bulletBuffer.end());
 
-    // clean up bullets after they move outside screen
-    // remove enemies after they go below screen
+    activeEnemyList.erase(remove_if(activeEnemyList.begin(),
+                                    activeEnemyList.end(), shouldRemoveEnemy),
+                          activeEnemyList.end());
+
+    // collision detection
 
     window.clear();
 
