@@ -74,6 +74,17 @@ int displayGameOverScreen() {
                     }
                 }
             }
+            // Change button color on hover
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            if (restartButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                restartButton.setFillColor(sf::Color(72, 140, 11 ));
+            else
+                restartButton.setFillColor(sf::Color::Green);
+
+            if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                exitButton.setFillColor(sf::Color(72, 140, 11 ));
+            else
+                exitButton.setFillColor(sf::Color(144, 12, 63));
         }
 
         window.clear(sf::Color::Black);

@@ -72,9 +72,9 @@ int gameui() {
     sound.setLoop(true);
     sound.play();
     // Create sound button
-    RectangleShape soundButton(Vector2f(50, 50));
+    CircleShape soundButton(25);
     soundButton.setFillColor(Color::Black);
-    soundButton.setPosition(10, 10);
+    soundButton.setPosition(0, 0);
 
     // Load sound image
 Texture soundImageOn;
@@ -129,6 +129,17 @@ soundSprite.setPosition(0, 0); // adjust the position as needed
                     printf("start game\n");
                 }
             }
+            // Change button color on hover
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            if (startButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                startButton.setFillColor(sf::Color(72, 140, 11 ));
+            else
+                startButton.setFillColor(sf::Color(127, 254, 14 ));
+
+            if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                exitButton.setFillColor(sf::Color(72, 140, 11 ));
+            else
+                exitButton.setFillColor(sf::Color(255, 59, 88));
 
             // Check if exit button is clicked
             if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
