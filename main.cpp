@@ -15,14 +15,14 @@ const float PLAYER_HEIGHT = 50.f;
 const float ENEMY_WIDTH = 50.f;
 const float ENEMY_HEIGHT = 50.f;
 
-const float PlayerStep = 0.1f;
+const float PlayerStep = 0.24f;
 
 const int ScreenWidth = 800;
 const int ScreenHeight = 600;
 
 const float BULLET_SIZE = 3.f;
-const float ENEMY_STEP = 0.02f;
-const float BULLET_STEP = 0.05;
+const float ENEMY_STEP = 0.08f;
+const float BULLET_STEP = 0.25;
 
 class Coord {
 public:
