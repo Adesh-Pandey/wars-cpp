@@ -80,10 +80,7 @@ public:
     playerSprite.setScale(scaleX, scaleY);
   }
 
-  void move(float dx, float dy) override {
-    // Implement the movement logic for the Player
-    playerSprite.move(dx, dy);
-  }
+  void move(float dx, float dy) override { playerSprite.move(dx, dy); }
 
   void changeInCoord(float dx, float dy) {
     Vector2f oldPos = playerSprite.getPosition();
@@ -99,7 +96,7 @@ public:
     if (oldY + dy > ScreenHeight - 20 - PLAYER_HEIGHT || oldY + dy <= 20) {
       return;
     }
-    playerSprite.setPosition(oldX + dx, oldY + dy);
+    move(dx, dy);
   }
 
   void keyPressedForMovement(PlayerMovementDirection key) {
@@ -136,6 +133,7 @@ public:
     // Draw the player's sprite to the screen
     window.draw(playerSprite);
   }
+
   Vector2f getCoord() {
     Vector2f pos = playerSprite.getPosition();
 
@@ -167,6 +165,7 @@ void whichKeyPressedCheck(Player *player, Keyboard::Key keyCode) {
     break;
   }
 }
+
 Coord getPlayerCenterFromCoord(Vector2f coord) {
   cout << " Player coord (" << coord.x << " , " << coord.y << " )" << endl;
   return Coord(coord.x + PLAYER_WIDTH / 2.0f + 200.f,
@@ -202,11 +201,7 @@ public:
   // for initialization in array
   Bullet() {}
 
-  void incrementPosition() {
-    const Vector2f oldPos = bulletSprite.getPosition();
-
-    bulletSprite.setPosition(oldPos.x, oldPos.y - BULLET_STEP);
-  }
+  void move() { bulletSprite.move(0, -BULLET_STEP); }
   void render(RenderWindow &window) {
     // Draw the player's sprite to the screen
     window.draw(bulletSprite);
@@ -241,11 +236,7 @@ public:
     enemySprite.setScale(scaleX, scaleY);
   }
 
-  void incrementPosition() {
-    const Vector2f oldPos = enemySprite.getPosition();
-
-    enemySprite.setPosition(oldPos.x, oldPos.y + ENEMY_STEP);
-  }
+  void move() { enemySprite.move(0, ENEMY_STEP); }
   void render(RenderWindow &window) {
     // Draw the player's sprite to the screen
     window.draw(enemySprite);
@@ -308,14 +299,13 @@ int main() {
     window.clear();
 
     for (Enemy &e : activeEnemyList) {
-      e.incrementPosition();
+      e.move();
 
       e.render(window);
     }
 
     for (Bullet &b : bulletBuffer) {
-      b.incrementPosition();
-
+      b.move();
       b.render(window);
     }
 
