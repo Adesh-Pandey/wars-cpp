@@ -3,7 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
 #include <iostream>
-#include <sstream> // Include this header for stringstream
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -17,17 +17,17 @@ const float PLAYER_HEIGHT = 50.f;
 const float ENEMY_WIDTH = 50.f;
 const float ENEMY_HEIGHT = 50.f;
 
-const float PlayerStep = 3.f;
+const float PlayerStep = 1.f;
 
 const int ScreenWidth = 800;
 const int ScreenHeight = 600;
 
-const float BULLET_SIZE = 3.f;
+const float BULLET_SIZE = 10.f;
 const float ENEMY_STEP = 0.08f;
 const float BULLET_STEP = 0.25;
 enum GameState { STARTING, RUNNING, GAME_OVER };
 
-GameState gameState = GameState::STARTING;
+GameState gameState = GameState::RUNNING;
 
 class Coord {
 public:
@@ -53,7 +53,7 @@ public:
 
 class Player : public Entity {
 private:
-  sf::Texture texture;
+  Texture texture;
   Sprite playerSprite;
 
 public:
@@ -164,18 +164,11 @@ Coord getPlayerCenterFromCoord(Vector2f coord) {
 }
 
 class Bullet {
-  Texture texture;
   Sprite bulletSprite;
 
 public:
-  Bullet(float x, float y) {
-    if (!texture.loadFromFile("bullet.png")) {
-      throw std::runtime_error("The texture is not loaded");
-      return;
-    }
-
+  Bullet(float x, float y, Texture &texture) {
     bulletSprite.setTexture(texture);
-
     Vector2u textureSize = texture.getSize();
 
     float scaleX = BULLET_SIZE / textureSize.x;
@@ -201,16 +194,10 @@ public:
 class Enemy {
 
 private:
-  Texture texture;
   Sprite enemySprite;
 
 public:
-  Enemy(Coord coord) {
-
-    if (!texture.loadFromFile("player_spaceship.png")) {
-      throw std::runtime_error("The texture is not loaded");
-      return;
-    }
+  Enemy(Coord coord, Texture &texture) {
 
     enemySprite.setTexture(texture);
 
@@ -254,8 +241,8 @@ bool shouldRemoveEnemy(Enemy ee) {
   return false;
 }
 bool isCollision(Bullet &sprite1, Enemy &sprite2) {
-  sf::FloatRect boundingBox1 = sprite1.getGlobalBounds();
-  sf::FloatRect boundingBox2 = sprite2.getGlobalBounds();
+  FloatRect boundingBox1 = sprite1.getGlobalBounds();
+  FloatRect boundingBox2 = sprite2.getGlobalBounds();
 
   if (boundingBox1.intersects(boundingBox2)) {
     return true;
@@ -264,8 +251,8 @@ bool isCollision(Bullet &sprite1, Enemy &sprite2) {
   return false;
 }
 bool isCollision(Player &player, Enemy &enemy) {
-  sf::FloatRect playerBounds = player.getGlobalBounds();
-  sf::FloatRect enemyBounds = enemy.getGlobalBounds();
+  FloatRect playerBounds = player.getGlobalBounds();
+  FloatRect enemyBounds = enemy.getGlobalBounds();
 
   if (playerBounds.intersects(enemyBounds)) {
     return true;
@@ -274,32 +261,42 @@ bool isCollision(Player &player, Enemy &enemy) {
   return false;
 }
 
-int gameRunning(sf::RenderWindow &window, Player &player,
+int gameRunning(RenderWindow &window, Player &player,
                 vector<Bullet> &bulletBuffer, int &levelEmemyCount,
-                vector<Enemy> &activeEnemyList, sf::Font &font, int &score) {
+                vector<Enemy> &activeEnemyList, Font &font, int &score,
+                Event &event, Sound &bulletSound, Sound &crashSound,
+                bool isSoundOn) {
 
-  sf::Text scoreText;
+  Text scoreText;
   scoreText.setFont(font);
   scoreText.setCharacterSize(24);
-  scoreText.setFillColor(sf::Color::White);
+  scoreText.setFillColor(Color::White);
   scoreText.setPosition(10, 10);
-  Event event;
-  while (window.pollEvent(event)) {
 
-    if (event.type == sf::Event::Closed) {
+  Texture bulletTexture;
+  bulletTexture.loadFromFile("./bullet.png");
+
+  Texture minionTexture;
+
+  minionTexture.loadFromFile("./minions.png");
+
+  while (window.pollEvent(event)) {
+    if (event.type == Event::Closed) {
       window.close();
-    } else if (event.type == Event::KeyPressed &&
-               event.key.code == Keyboard::Space) {
+    }
+    if (event.type == Event::KeyPressed && event.key.code == Keyboard::Space) {
 
       const Vector2f currentPlayerCoord = player.getCoord();
 
+      if (isSoundOn && !bulletSound.getStatus()) {
+        bulletSound.play();
+      }
       bulletBuffer.push_back(
-          Bullet(currentPlayerCoord.x, currentPlayerCoord.y));
+          Bullet(currentPlayerCoord.x, currentPlayerCoord.y, bulletTexture));
     }
-
-    if (event.type == Event::KeyPressed) {
-      whichKeyPressedCheck(&player, event.key.code);
-    }
+  }
+  if (event.type == Event::KeyPressed) {
+    whichKeyPressedCheck(&player, event.key.code);
   }
 
   const int diff = levelEmemyCount - activeEnemyList.size();
@@ -307,7 +304,7 @@ int gameRunning(sf::RenderWindow &window, Player &player,
   if (diff > 0) {
     for (int i = 0; i < diff; i++) {
       activeEnemyList.push_back(
-          Enemy(randomCoordinateAboveScreenForEnemySpwan()));
+          Enemy(randomCoordinateAboveScreenForEnemySpwan(), minionTexture));
     }
   }
 
@@ -336,6 +333,9 @@ int gameRunning(sf::RenderWindow &window, Player &player,
         enemyIt = activeEnemyList.erase(enemyIt);
         score++;
 
+        if (isSoundOn && !crashSound.getStatus()) {
+          crashSound.play();
+        }
         bulletCollided = true;
         break;
       }
@@ -371,7 +371,7 @@ int gameRunning(sf::RenderWindow &window, Player &player,
   return 0;
 }
 
-int gameui(sf::RenderWindow &window, bool &isSoundOn, sf::Sound &sound) {
+int gameui(RenderWindow &window, bool &isSoundOn, Sound &sound, Event &event) {
   Texture backg;
   if (!backg.loadFromFile("PNG/bgimage.png")) {
     std::cerr << "Failed to load player image." << std::endl;
@@ -388,7 +388,6 @@ int gameui(sf::RenderWindow &window, bool &isSoundOn, sf::Sound &sound) {
     return 1;
   }
 
-  // Load player image
   Texture playerTexture;
   if (!playerTexture.loadFromFile("PNG/player_spaceship.png")) {
     std::cerr << "Failed to load player image." << std::endl;
@@ -404,15 +403,15 @@ int gameui(sf::RenderWindow &window, bool &isSoundOn, sf::Sound &sound) {
   startButton.setPosition(300, 350);
 
   RectangleShape exitButton(Vector2f(200, 50));
-  exitButton.setFillColor(sf::Color(255, 59, 88));
+  exitButton.setFillColor(Color(255, 59, 88));
   exitButton.setPosition(300, 440);
 
   Text startText("Start", font, 45);
-  startText.setFillColor(sf::Color(144, 12, 63));
+  startText.setFillColor(Color(144, 12, 63));
   startText.setPosition(350, 340);
 
   Text exitText("Exit", font, 35);
-  exitText.setFillColor(sf::Color(144, 12, 63));
+  exitText.setFillColor(Color(144, 12, 63));
   exitText.setPosition(360, 440);
 
   CircleShape soundButton(25);
@@ -445,132 +444,122 @@ int gameui(sf::RenderWindow &window, bool &isSoundOn, sf::Sound &sound) {
   window.draw(soundSprite);
 
   window.display();
-  Event event;
-  while (window.pollEvent(event)) {
-    if (event.type == Event::Closed) {
+
+  if (event.type == Event::Closed) {
+    window.close();
+  }
+
+  if (event.type == Event::MouseButtonPressed &&
+      event.mouseButton.button == Mouse::Left) {
+    Vector2i mousePosition = Mouse::getPosition(window);
+    if (startButton.getGlobalBounds().contains(mousePosition.x,
+                                               mousePosition.y)) {
+      gameState = GameState::RUNNING;
+      printf("start game\n");
+    }
+  }
+  Vector2i mousePos = Mouse::getPosition(window);
+  if (startButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    startButton.setFillColor(Color(72, 140, 11));
+  else
+    startButton.setFillColor(Color(127, 254, 14));
+
+  if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    exitButton.setFillColor(Color(72, 140, 11));
+  else
+    exitButton.setFillColor(Color(255, 59, 88));
+
+  if (event.type == Event::MouseButtonPressed &&
+      event.mouseButton.button == Mouse::Left) {
+    Vector2i mousePosition = Mouse::getPosition(window);
+    if (exitButton.getGlobalBounds().contains(mousePosition.x,
+                                              mousePosition.y)) {
       window.close();
     }
+  }
 
-    if (event.type == Event::MouseButtonPressed &&
-        event.mouseButton.button == Mouse::Left) {
-      Vector2i mousePosition = Mouse::getPosition(window);
-      if (startButton.getGlobalBounds().contains(mousePosition.x,
-                                                 mousePosition.y)) {
-        gameState = GameState::RUNNING;
-        printf("start game\n");
+  if (event.type == Event::MouseButtonPressed &&
+      event.mouseButton.button == Mouse::Left) {
+    Vector2i mousePosition = Mouse::getPosition(window);
+    if (soundButton.getGlobalBounds().contains(mousePosition.x,
+                                               mousePosition.y)) {
+      isSoundOn = !isSoundOn;
+
+      if (isSoundOn) {
+        sound.play();
+      } else {
+        sound.pause();
       }
-    }
-    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-    if (startButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-      startButton.setFillColor(sf::Color(72, 140, 11));
-    else
-      startButton.setFillColor(sf::Color(127, 254, 14));
 
-    if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-      exitButton.setFillColor(sf::Color(72, 140, 11));
-    else
-      exitButton.setFillColor(sf::Color(255, 59, 88));
-
-    if (event.type == Event::MouseButtonPressed &&
-        event.mouseButton.button == Mouse::Left) {
-      Vector2i mousePosition = Mouse::getPosition(window);
-      if (exitButton.getGlobalBounds().contains(mousePosition.x,
-                                                mousePosition.y)) {
-        window.close();
-      }
-    }
-
-    if (event.type == Event::MouseButtonPressed &&
-        event.mouseButton.button == Mouse::Left) {
-      Vector2i mousePosition = Mouse::getPosition(window);
-      if (soundButton.getGlobalBounds().contains(mousePosition.x,
-                                                 mousePosition.y)) {
-        isSoundOn = !isSoundOn;
-
-        if (isSoundOn) {
-          sound.play();
-        } else {
-          sound.pause();
-        }
-
-        if (isSoundOn) {
-          soundSprite.setTexture(soundImageOn);
-        } else {
-          soundSprite.setTexture(soundImageOff);
-        }
+      if (isSoundOn) {
+        soundSprite.setTexture(soundImageOn);
+      } else {
+        soundSprite.setTexture(soundImageOff);
       }
     }
   }
   return 0;
-};
+}
 
-int displayGameOverScreen(sf::RenderWindow &window, sf::SoundBuffer &gameover,
-                          sf::Sound &over) {
-
-  over.setBuffer(gameover);
-  over.play();
-  sf::Font font;
+int displayGameOverScreen(RenderWindow &window, SoundBuffer &gameover,
+                          Sound &over, Event &event) {
+  Font font;
   if (!font.loadFromFile("PNG/fonts.ttf")) {
     std::cerr << "Failed to load font." << std::endl;
     return 1;
   }
 
-  sf::Texture gameOverTexture;
+  Texture gameOverTexture;
   if (!gameOverTexture.loadFromFile("PNG/gamebg.png")) {
     std::cerr << "Failed to load game over texture." << std::endl;
     return 1;
   }
 
-  sf::Sprite gameOverSprite(gameOverTexture);
+  Sprite gameOverSprite(gameOverTexture);
   gameOverSprite.setScale(3, 3);
   gameOverSprite.setPosition(0, 0);
 
-  sf::RectangleShape restartButton(sf::Vector2f(200, 50));
-  restartButton.setFillColor(sf::Color::Green);
+  RectangleShape restartButton(Vector2f(200, 50));
+  restartButton.setFillColor(Color::Green);
   restartButton.setPosition(300, 300);
 
-  sf::Text restartText("Restart", font, 40);
-  restartText.setFillColor(sf::Color(255, 59, 88));
+  Text restartText("Restart", font, 40);
+  restartText.setFillColor(Color(255, 59, 88));
   restartText.setPosition(350, 300);
 
-  sf::RectangleShape exitButton(sf::Vector2f(200, 50));
-  exitButton.setFillColor(sf::Color(144, 12, 63));
+  RectangleShape exitButton(Vector2f(200, 50));
+  exitButton.setFillColor(Color(144, 12, 63));
   exitButton.setPosition(300, 400);
 
-  sf::Text exitText("Exit", font, 40);
-  exitText.setFillColor(sf::Color(255, 59, 88));
+  Text exitText("Exit", font, 40);
+  exitText.setFillColor(Color(255, 59, 88));
   exitText.setPosition(380, 400);
 
-  sf::Event event;
-  while (window.pollEvent(event)) {
-    if (event.type == sf::Event::Closed)
-      window.close();
-    else if (event.type == sf::Event::MouseButtonReleased) {
-      if (event.mouseButton.button == sf::Mouse::Left) {
-        sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-        if (restartButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
-          gameState = GameState::RUNNING;
+  if (event.type == Event::MouseButtonReleased) {
+    if (event.mouseButton.button == Mouse::Left) {
+      Vector2i mousePos = Mouse::getPosition(window);
+      if (restartButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+        gameState = GameState::RUNNING;
 
-          std::cout << "Restarting game..." << std::endl;
-        }
-        if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
-          window.close();
-        }
+        std::cout << "Restarting game..." << std::endl;
+      }
+      if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+        window.close();
       }
     }
-    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-    if (restartButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-      restartButton.setFillColor(sf::Color(72, 140, 11));
-    else
-      restartButton.setFillColor(sf::Color::Green);
-
-    if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-      exitButton.setFillColor(sf::Color(72, 140, 11));
-    else
-      exitButton.setFillColor(sf::Color(144, 12, 63));
   }
+  Vector2i mousePos = Mouse::getPosition(window);
+  if (restartButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    restartButton.setFillColor(Color(72, 140, 11));
+  else
+    restartButton.setFillColor(Color::Green);
 
-  window.clear(sf::Color::Black);
+  if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    exitButton.setFillColor(Color(72, 140, 11));
+  else
+    exitButton.setFillColor(Color(144, 12, 63));
+
+  window.clear(Color::Black);
   window.draw(gameOverSprite);
   window.draw(restartButton);
   window.draw(restartText);
@@ -589,25 +578,27 @@ int main() {
 
   int levelEmemyCount = 10;
   vector<Enemy> activeEnemyList;
-  sf::Font font;
+  Font font;
   int score = 0;
   if (!font.loadFromFile("arial.ttf")) {
     return EXIT_FAILURE;
   }
-  sf::SoundBuffer gameover;
+  SoundBuffer gameover;
   if (!gameover.loadFromFile("PNG/oversound.wav")) {
     std::cerr << "Failed to load sound file." << std::endl;
     return 1;
   }
 
-  sf::Sound over;
+  Sound over;
   SoundBuffer soundBuffer;
   if (!soundBuffer.loadFromFile("PNG/sound_effect.wav")) {
     std::cerr << "Failed to load sound effect" << std::endl;
     return 1;
   }
+  over.setBuffer(gameover);
+  over.setLoop(false);
 
-  sf::Sound sound;
+  Sound sound;
   sound.setBuffer(soundBuffer);
   sound.setLoop(true);
   sound.play();
@@ -615,18 +606,64 @@ int main() {
   Event event;
   RenderWindow window(VideoMode(ScreenWidth, ScreenHeight), "Game Window");
 
+  Texture bulletTexture;
+  bulletTexture.loadFromFile("./bullet.png");
+
+  SoundBuffer shootBuffer;
+  SoundBuffer bulletAndEntityCrashBuffer;
+
+  Sound shootSound;
+
+  if (!shootBuffer.loadFromFile("./shoot.wav")) {
+    std::cerr << "Failed to load shoot sound effect" << std::endl;
+    return 1;
+  }
+
+  if (!bulletAndEntityCrashBuffer.loadFromFile("./minion_kill.ogg")) {
+    std::cerr << "Failed to load bulletAndEntityCrash sound effect"
+              << std::endl;
+    return 1;
+  }
+
+  // Initialize sounds and link them to their buffers
+  shootSound.setBuffer(shootBuffer);
+  shootSound.setLoop(false);
+
+  Sound bulletAndEntityCrashSound;
+  bulletAndEntityCrashSound.setBuffer(bulletAndEntityCrashBuffer);
+  bulletAndEntityCrashSound.setLoop(false);
+
   while (window.isOpen()) {
 
     window.clear();
-
+    while (window.pollEvent(event)) {
+      if (event.type == Event::Closed) {
+        window.close();
+      }
+    }
     if (gameState == GameState::RUNNING) {
+      over.stop();
+      if (isSoundOn && !sound.getStatus()) {
+        sound.play();
+      }
       gameRunning(window, player, bulletBuffer, levelEmemyCount,
-                  activeEnemyList, font, score);
+                  activeEnemyList, font, score, event,
+                  bulletAndEntityCrashSound, bulletAndEntityCrashSound,
+                  isSoundOn);
+
     } else if (gameState == GameState::STARTING) {
-      gameui(window, isSoundOn, sound);
+      over.stop();
+      if (isSoundOn && !sound.getStatus()) {
+        sound.play();
+      }
+      gameui(window, isSoundOn, sound, event);
 
     } else if (gameState == GameState::GAME_OVER) {
-      displayGameOverScreen(window, gameover, over);
+      sound.stop();
+      if (isSoundOn && !over.getStatus()) {
+        over.play();
+      }
+      displayGameOverScreen(window, gameover, over, event);
       bulletBuffer.clear();
       activeEnemyList.clear();
       score = 0;
