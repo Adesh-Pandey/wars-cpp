@@ -17,7 +17,7 @@ const float PLAYER_HEIGHT = 50.f;
 const float ENEMY_WIDTH = 50.f;
 const float ENEMY_HEIGHT = 50.f;
 
-const float PlayerStep = 1.f;
+const float PlayerStep = 0.8f;
 
 const int ScreenWidth = 800;
 const int ScreenHeight = 600;
@@ -27,7 +27,7 @@ const float ENEMY_STEP = 0.08f;
 const float BULLET_STEP = 0.25;
 enum GameState { STARTING, RUNNING, GAME_OVER };
 
-GameState gameState = GameState::RUNNING;
+GameState gameState = GameState::STARTING;
 
 class Coord {
 public:
@@ -265,7 +265,7 @@ int gameRunning(RenderWindow &window, Player &player,
                 vector<Bullet> &bulletBuffer, int &levelEmemyCount,
                 vector<Enemy> &activeEnemyList, Font &font, int &score,
                 Event &event, Sound &bulletSound, Sound &crashSound,
-                bool isSoundOn) {
+                bool isSoundOn, Sound &over) {
 
   Text scoreText;
   scoreText.setFont(font);
@@ -318,6 +318,7 @@ int gameRunning(RenderWindow &window, Player &player,
   for (Enemy &enemy : activeEnemyList) {
     if (isCollision(player, enemy)) {
       gameState = GameState::GAME_OVER;
+      over.play();
       break;
     }
   }
@@ -371,7 +372,7 @@ int gameRunning(RenderWindow &window, Player &player,
   return 0;
 }
 
-int gameui(RenderWindow &window, bool &isSoundOn, Sound &sound, Event &event) {
+int gameui(RenderWindow &window, bool &isSoundOn, Sound &sound) {
   Texture backg;
   if (!backg.loadFromFile("PNG/bgimage.png")) {
     std::cerr << "Failed to load player image." << std::endl;
@@ -445,56 +446,60 @@ int gameui(RenderWindow &window, bool &isSoundOn, Sound &sound, Event &event) {
 
   window.display();
 
-  if (event.type == Event::Closed) {
-    window.close();
-  }
+  Event event;
 
-  if (event.type == Event::MouseButtonPressed &&
-      event.mouseButton.button == Mouse::Left) {
-    Vector2i mousePosition = Mouse::getPosition(window);
-    if (startButton.getGlobalBounds().contains(mousePosition.x,
-                                               mousePosition.y)) {
-      gameState = GameState::RUNNING;
-      printf("start game\n");
-    }
-  }
-  Vector2i mousePos = Mouse::getPosition(window);
-  if (startButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-    startButton.setFillColor(Color(72, 140, 11));
-  else
-    startButton.setFillColor(Color(127, 254, 14));
-
-  if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
-    exitButton.setFillColor(Color(72, 140, 11));
-  else
-    exitButton.setFillColor(Color(255, 59, 88));
-
-  if (event.type == Event::MouseButtonPressed &&
-      event.mouseButton.button == Mouse::Left) {
-    Vector2i mousePosition = Mouse::getPosition(window);
-    if (exitButton.getGlobalBounds().contains(mousePosition.x,
-                                              mousePosition.y)) {
+  while (window.pollEvent(event)) {
+    if (event.type == Event::Closed) {
       window.close();
     }
-  }
 
-  if (event.type == Event::MouseButtonPressed &&
-      event.mouseButton.button == Mouse::Left) {
-    Vector2i mousePosition = Mouse::getPosition(window);
-    if (soundButton.getGlobalBounds().contains(mousePosition.x,
-                                               mousePosition.y)) {
-      isSoundOn = !isSoundOn;
-
-      if (isSoundOn) {
-        sound.play();
-      } else {
-        sound.pause();
+    if (event.type == Event::MouseButtonPressed &&
+        event.mouseButton.button == Mouse::Left) {
+      Vector2i mousePosition = Mouse::getPosition(window);
+      if (startButton.getGlobalBounds().contains(mousePosition.x,
+                                                 mousePosition.y)) {
+        gameState = GameState::RUNNING;
+        printf("start game\n");
       }
+    }
+    Vector2i mousePos = Mouse::getPosition(window);
+    if (startButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+      startButton.setFillColor(Color(72, 140, 11));
+    else
+      startButton.setFillColor(Color(127, 254, 14));
 
-      if (isSoundOn) {
-        soundSprite.setTexture(soundImageOn);
-      } else {
-        soundSprite.setTexture(soundImageOff);
+    if (exitButton.getGlobalBounds().contains(mousePos.x, mousePos.y))
+      exitButton.setFillColor(Color(72, 140, 11));
+    else
+      exitButton.setFillColor(Color(255, 59, 88));
+
+    if (event.type == Event::MouseButtonPressed &&
+        event.mouseButton.button == Mouse::Left) {
+      Vector2i mousePosition = Mouse::getPosition(window);
+      if (exitButton.getGlobalBounds().contains(mousePosition.x,
+                                                mousePosition.y)) {
+        window.close();
+      }
+    }
+
+    if (event.type == Event::MouseButtonPressed &&
+        event.mouseButton.button == Mouse::Left) {
+      Vector2i mousePosition = Mouse::getPosition(window);
+      if (soundButton.getGlobalBounds().contains(mousePosition.x,
+                                                 mousePosition.y)) {
+        isSoundOn = !isSoundOn;
+
+        if (isSoundOn) {
+          sound.play();
+        } else {
+          sound.pause();
+        }
+
+        if (isSoundOn) {
+          soundSprite.setTexture(soundImageOn);
+        } else {
+          soundSprite.setTexture(soundImageOff);
+        }
       }
     }
   }
@@ -649,20 +654,17 @@ int main() {
       gameRunning(window, player, bulletBuffer, levelEmemyCount,
                   activeEnemyList, font, score, event,
                   bulletAndEntityCrashSound, bulletAndEntityCrashSound,
-                  isSoundOn);
+                  isSoundOn, over);
 
     } else if (gameState == GameState::STARTING) {
       over.stop();
       if (isSoundOn && !sound.getStatus()) {
         sound.play();
       }
-      gameui(window, isSoundOn, sound, event);
+      gameui(window, isSoundOn, sound);
 
     } else if (gameState == GameState::GAME_OVER) {
       sound.stop();
-      if (isSoundOn && !over.getStatus()) {
-        over.play();
-      }
       displayGameOverScreen(window, gameover, over, event);
       bulletBuffer.clear();
       activeEnemyList.clear();
